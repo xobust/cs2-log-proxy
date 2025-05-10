@@ -2,7 +2,6 @@ package receiver
 
 import (
 	"context"
-	"net/http"
 	"sync"
 	"time"
 )

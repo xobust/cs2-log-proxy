@@ -7,21 +7,26 @@ import (
 
 	"github.com/gorilla/mux"
 
-	"cs2-log-manager/websocket"
-	"cs2-log-manager/handlers"
+	"cs2-log-proxy/handlers"
+	"cs2-log-proxy/storage"
+	"cs2-log-proxy/websocket"
 )
 
 func main() {
 	// Initialize router
 	r := mux.NewRouter()
 
+	// Initialize log store
+	logStore := storage.NewLogStore("./logs")
+
 	// WebSocket endpoint
 	r.HandleFunc("/ws", websocket.HandleConnections)
 
 	// API endpoints
-	r.HandleFunc("/api/logs", handlers.HandleLogPackage).Methods("POST")
+	r.HandleFunc("/api/logs", handlers.HandleLogPackage(logStore)).Methods("POST")
 	r.HandleFunc("/api/config", handlers.HandleConfig).Methods("GET", "POST")
 	r.HandleFunc("/api/streams", handlers.HandleLogStream).Methods("GET")
+	r.PathPrefix("/api/admin").Handler(handlers.ManagementHandler(logStore))
 
 	// Static files for the web UI
 	r.PathPrefix("/").Handler(http.FileServer(http.Dir("./web")))
@@ -35,5 +40,3 @@ func main() {
 		log.Fatal(err)
 	}
 }
-
-
