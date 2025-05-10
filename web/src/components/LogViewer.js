@@ -1,28 +1,32 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, Paper, Typography } from '@mui/material';
+import {
+  Box,
+  Paper,
+  Typography,
+  Button,
+  Switch,
+  FormControlLabel,
+  Stack,
+  Tooltip,
+} from '@mui/material';
+import DownloadIcon from '@mui/icons-material/Download';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import { useWebSocket } from '../WebSocketContext';
 
 function LogViewer({ token }) {
   const [logs, setLogs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const wsRef = useRef(null);
+  const [loading, setLoading] = useState(false);
+  const [autoScroll, setAutoScroll] = useState(true);
+  const containerRef = useRef(null);
 
   // Fetch the full log when token changes
   useEffect(() => {
     if (!token) return;
     setLoading(true);
     fetch(`/api/logs/${token}`)
-      .then(res => res.ok ? res.json() : Promise.reject('Failed to fetch log'))
-      .then(data => {
-        // Support both array and object with .chunks or .logs
-        if (Array.isArray(data)) {
-          setLogs(data);
-        } else if (data.chunks) {
-          setLogs(data.chunks);
-        } else if (data.logs) {
-          setLogs(data.logs);
-        } else {
-          setLogs([]);
-        }
+      .then((res) => (res.ok ? res.text() : Promise.reject('Failed to fetch log')))
+      .then((data) => {
+        setLogs(data.split('\n'));
         setLoading(false);
       })
       .catch(() => {
@@ -31,52 +35,132 @@ function LogViewer({ token }) {
       });
   }, [token]);
 
+  const { ws } = useWebSocket();
 
-  // Listen for live updates over WebSocket
   useEffect(() => {
-    if (!token) return;
-    const ws = new WebSocket(`ws://localhost:8081/ws/${token}`);
-    wsRef.current = ws;
-
+    if (!token || !ws) return;
+    ws.send(JSON.stringify({ type: 'subscribe', event: 'log_chunk', token }));
     ws.onmessage = (event) => {
-      setLogs(prev => [...prev, event.data]);
-    };
-
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
-
-    ws.onclose = () => {
-      console.log('WebSocket connection closed');
+      const data = JSON.parse(event.data);
+      if (data.type === 'log_chunk' && data.token === token) {
+        setLogs((prev) => [...prev, data.payload]);
+      }
     };
 
     return () => {
-      ws.close();
+      if (ws) {
+        ws.send(JSON.stringify({ type: 'unsubscribe', event: 'log_chunk', token }));
+      }
     };
-  }, [token]);
+  }, [token, ws]);
 
   const scrollToBottom = () => {
-    const container = document.getElementById('log-container');
-    if (container) {
-      container.scrollTop = container.scrollHeight;
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
   };
 
+  // Scroll to bottom when logs change
   useEffect(() => {
-    scrollToBottom();
-  }, [logs]);
+    if (autoScroll) {
+      scrollToBottom();
+    }
+  }, [logs, autoScroll]);
+
+  const handleDownload = () => {
+    const blob = new Blob([logs.join('\n')], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `log_${token || 'unknown'}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   return (
-    <Paper sx={{ p: 2, height: '100vh', overflow: 'auto' }}>
-      <Box sx={{ mb: 2 }}>
-        <Typography variant="h5">CS2 Log Viewer</Typography>
-      </Box>
-      <Box id="log-container" sx={{ mb: 2 }}>
-        {logs.map((log, index) => (
-          <Typography key={index} variant="body1" sx={{ color: 'primary.main' }}>
-            {log}
+    <Paper
+      elevation={3}
+      sx={{
+        mt: 3,
+        p: 2,
+        minHeight: 400,
+        maxHeight: 600,
+        background: '#181c24',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2} spacing={2}>
+        <Typography variant="h6">Log Viewer {token ? `(Token: ${token})` : ''}</Typography>
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Tooltip title="Download full log">
+            <span>
+              <Button
+                variant="outlined"
+                color="primary"
+                size="small"
+                startIcon={<DownloadIcon />}
+                onClick={handleDownload}
+                disabled={logs.length === 0}
+              >
+                Download
+              </Button>
+            </span>
+          </Tooltip>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={autoScroll}
+                onChange={(e) => setAutoScroll(e.target.checked)}
+                color="primary"
+              />
+            }
+            label="Auto-scroll"
+          />
+        </Stack>
+      </Stack>
+      <Box
+        id="log-container"
+        ref={containerRef}
+        sx={{
+          flex: 1,
+          overflowY: 'auto',
+          background: '#11151c',
+          borderRadius: 1,
+          border: '1px solid #23283a',
+          p: 2,
+          minHeight: 320,
+          maxHeight: 500,
+        }}
+      >
+        {logs.length === 0 ? (
+          <Typography color="text.secondary" sx={{ mt: 2 }}>
+            No logs available.
           </Typography>
-        ))}
+        ) : (
+          logs.map((line, idx) => (
+            <Typography
+              key={idx}
+              sx={{ fontFamily: 'monospace', fontSize: 14, whiteSpace: 'pre-wrap' }}
+            >
+              {line}
+            </Typography>
+          ))
+        )}
+        {!autoScroll && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1 }}>
+            <Button
+              variant="text"
+              size="small"
+              startIcon={<ArrowDownwardIcon />}
+              onClick={scrollToBottom}
+            >
+              Scroll to bottom
+            </Button>
+          </Box>
+        )}
       </Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="body2" color="text.secondary">
@@ -85,20 +169,6 @@ function LogViewer({ token }) {
         <Typography variant="body2" color="text.secondary">
           {loading ? 'Connecting...' : 'Connected'}
         </Typography>
-      </Box>
-      <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-        <button
-          onClick={() => {
-            if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-              const message = `Test message ${new Date().toISOString()}`;
-              wsRef.current.send(message);
-              setLogs((prev) => [...prev, message]);
-            }
-          }}
-          style={{ padding: '8px 16px', background: '#1976d2', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-        >
-          Send Test Message
-        </button>
       </Box>
     </Paper>
   );

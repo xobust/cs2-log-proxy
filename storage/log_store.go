@@ -3,6 +3,7 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -170,4 +171,18 @@ func (ls *LogStore) SaveChunk(token string, chunkData string, meta ChunkMeta, ga
 	}
 	mf.Close()
 	return nil
+}
+
+func (ls *LogStore) GetLog(token string) (string, error) {
+	logPath := filepath.Join(ls.Dir, token+".log")
+	f, err := os.Open(logPath)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
 }

@@ -3,12 +3,15 @@ package handlers
 import (
 	"cs2-log-proxy/receiver"
 	"cs2-log-proxy/storage"
+	"cs2-log-proxy/websocket"
 	"net/http"
 	"strconv"
+
+	"github.com/gorilla/mux"
 )
 
 // HandleLogPackage handles incoming CS2 log packages
-func HandleLogPackage(logStore *storage.LogStore) func(w http.ResponseWriter, r *http.Request) {
+func HandleLogPackage(logStore *storage.LogStore, wsHub *websocket.Hub) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		headers := receiver.CS2ServerHeaders{}
 
@@ -76,7 +79,25 @@ func HandleLogPackage(logStore *storage.LogStore) func(w http.ResponseWriter, r 
 				return
 			}
 		}
+		wsHub.BroadcastEvent("log_chunk", token, string(logData))
 
 		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func HandleGetLog(logStore *storage.LogStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		token := mux.Vars(r)["token"]
+		if token == "" {
+			http.Error(w, "Missing token", http.StatusBadRequest)
+			return
+		}
+		logs, err := logStore.GetLog(token)
+		if err != nil {
+			http.Error(w, "Failed to get log", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "text/plain")
+		w.Write([]byte(logs))
 	}
 }
