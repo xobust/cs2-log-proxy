@@ -5,11 +5,12 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gorilla/mux"
-
+	"cs2-log-proxy/domain"
 	"cs2-log-proxy/handlers"
 	"cs2-log-proxy/storage"
 	"cs2-log-proxy/websocket"
+
+	"github.com/gorilla/mux"
 )
 
 func main() {
@@ -25,11 +26,14 @@ func main() {
 	// WebSocket endpoint
 	r.HandleFunc("/ws", websocket.HandleConnections(hub))
 
+	// Domain service
+	logService := domain.NewLogService(logStore, hub)
+
 	// API endpoints
-	r.HandleFunc("/api/logs", handlers.HandleLogPackage(logStore, hub)).Methods("POST")
+	r.HandleFunc("/api/logs", handlers.HandleLogPackage(logService)).Methods("POST")
 	r.HandleFunc("/api/logs/{token}", handlers.HandleGetLog(logStore)).Methods("GET")
+	r.HandleFunc("/api/listlogs", handlers.HandleListLogs(logService)).Methods("GET")
 	r.HandleFunc("/api/config", handlers.HandleConfig).Methods("GET", "POST")
-	r.PathPrefix("/api/admin").Handler(handlers.ManagementHandler(logStore))
 
 	// Static files for the web UI
 	r.PathPrefix("/").Handler(http.FileServer(http.Dir("./web")))

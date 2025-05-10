@@ -1,14 +1,18 @@
 # CS2 log proxy (WIP)
 
-A Go + React application to receive, proxy, and stream CS2 log packages in real time, with a management UI.
+A Go + React application to receive CS2 log packages (logaddress_add_http) and store them in a file system.
+It also provides a management UI to view and manage the logs with real-time updates.
+Proxying logs to multiple receivers is planned.
 
-## Features
+## Roadmap
 
-- Receives CS2 log packages and forwards to multiple receivers
-- Real-time log streaming via WebSocket
-- File-based log storage (S3 planned)
-- Management UI (React + Material-UI)
-- Configuration management
+- [x] Implement log receiving
+- [x] Implement robust chunk reconstruction
+- [ ] Implement robust log proxying
+- [ ] Add support for log delay
+- [ ] Implement log storage (S3 planned)
+- [ ] Implement management UI (React + Material-UI)
+- [ ] Run distributed on multiple machines
 
 ## Getting Started
 
