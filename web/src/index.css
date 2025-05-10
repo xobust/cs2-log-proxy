@@ -1,13 +1,81 @@
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #1a1a1a;
-  color: #ffffff;
+  background: linear-gradient(135deg, #232526 0%, #414345 100%);
+  color: #f5f6fa;
+  min-height: 100vh;
 }
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Inter', 'Segoe UI', 'Roboto', Arial, sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.card, .MuiPaper-root {
+  background: rgba(34, 40, 49, 0.98) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.18) !important;
+}
+
+.MuiDataGrid-root {
+  background: #232526 !important;
+  color: #f5f6fa !important;
+  font-size: 16px !important;
+  border-radius: 8px !important;
+}
+.MuiDataGrid-columnHeaders {
+  background: linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%) !important;
+  color: #fff !important;
+  font-weight: 700 !important;
+  font-size: 17px !important;
+}
+.MuiDataGrid-row {
+  background-color: rgba(44, 62, 80, 0.85) !important;
+  transition: background 0.2s !important;
+}
+.MuiDataGrid-row:hover {
+  background: linear-gradient(90deg, #4e54c8 0%, #8f94fb 100%) !important;
+  color: #fff !important;
+}
+.MuiDataGrid-cell {
+  border-bottom: 1px solid #444 !important;
+}
+.MuiDataGrid-footerContainer {
+  background: rgba(34, 40, 49, 0.98) !important;
+  color: #b2bec3 !important;
+}
+.MuiTablePagination-root {
+  color: #b2bec3 !important;
+}
+
+/* Accent buttons and links */
+a, .MuiButton-root {
+  color: #6dd5ed !important;
+  transition: color 0.2s;
+}
+a:hover, .MuiButton-root:hover {
+  color: #2193b0 !important;
+}
+
+/* Custom scrollbars for dark theme */
+::-webkit-scrollbar {
+  width: 10px;
+  background: #232526;
+}
+::-webkit-scrollbar-thumb {
+  background: #2193b0;
+  border-radius: 5px;
+}
+
+#root {
+  min-height: 100vh;
+}
+
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',

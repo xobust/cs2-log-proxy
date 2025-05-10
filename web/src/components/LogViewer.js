@@ -1,21 +1,45 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Box, Paper, Typography } from '@mui/material';
 
-function LogViewer() {
+function LogViewer({ token }) {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const wsRef = useRef(null);
 
+  // Fetch the full log when token changes
   useEffect(() => {
-    const ws = new WebSocket('ws://localhost:8081/ws');
+    if (!token) return;
+    setLoading(true);
+    fetch(`/api/logs/${token}`)
+      .then(res => res.ok ? res.json() : Promise.reject('Failed to fetch log'))
+      .then(data => {
+        // Support both array and object with .chunks or .logs
+        if (Array.isArray(data)) {
+          setLogs(data);
+        } else if (data.chunks) {
+          setLogs(data.chunks);
+        } else if (data.logs) {
+          setLogs(data.logs);
+        } else {
+          setLogs([]);
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        setLogs([]);
+        setLoading(false);
+      });
+  }, [token]);
+
+
+  // Listen for live updates over WebSocket
+  useEffect(() => {
+    if (!token) return;
+    const ws = new WebSocket(`ws://localhost:8081/ws/${token}`);
     wsRef.current = ws;
 
-    ws.onopen = () => {
-      setLoading(false);
-    };
-
     ws.onmessage = (event) => {
-      setLogs((prev) => [...prev, event.data]);
+      setLogs(prev => [...prev, event.data]);
     };
 
     ws.onerror = (error) => {
@@ -29,7 +53,7 @@ function LogViewer() {
     return () => {
       ws.close();
     };
-  }, []);
+  }, [token]);
 
   const scrollToBottom = () => {
     const container = document.getElementById('log-container');
