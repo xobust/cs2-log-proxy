@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from 'react';
 import { DataGrid } from '@mui/x-data-grid';
 import { Box, Typography, Paper, CircularProgress, Alert } from '@mui/material';
+import { useWebSocket } from '../WebSocketContext';
 
 export default function LogList({ selectedToken, onSelect }) {
   const [logs, setLogs] = useState([]);
@@ -8,9 +9,9 @@ export default function LogList({ selectedToken, onSelect }) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch("/api/admin/logs")
+    fetch('/api/listlogs')
       .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch logs");
+        if (!res.ok) throw new Error('Failed to fetch logs');
         return res.json();
       })
       .then((data) => {
@@ -23,16 +24,36 @@ export default function LogList({ selectedToken, onSelect }) {
       });
   }, []);
 
+  const { subscribe, unsubscribe } = useWebSocket();
+
+  useEffect(() => {
+    // Handler for new_log events
+    const handleNewLog = (data) => {
+      if (data.type === 'new_log') {
+        setLogs((prev) => [...prev, data.payload]);
+      }
+    };
+    // Subscribe on mount
+    const unsub = subscribe('new_log', handleNewLog, { token: '*' });
+    return () => {
+      unsub();
+    };
+  }, [subscribe]);
+
   const columns = [
     { field: 'token', headerName: 'Server Instance', flex: 1, minWidth: 180 },
+    { field: 'log_start_time', headerName: 'Log Start Time', flex: 1, minWidth: 180 },
     { field: 'game_map', headerName: 'Game Map', flex: 1, minWidth: 120 },
     { field: 'steam_id', headerName: 'Steam ID', flex: 1, minWidth: 120 },
     { field: 'server_addr', headerName: 'Server Address', flex: 1, minWidth: 150 },
     { field: 'last_activity', headerName: 'Last Activity', flex: 1, minWidth: 180 },
+    { field: 'log_id', headerName: 'Log ID', display: 'none' },
   ];
 
   const rows = logs.map((log, idx) => ({
-    id: log.server_instance_token,
+    id: log.log_id,
+    log_id: log.log_id,
+    log_start_time: log.log_start_time,
     game_map: log.metadata.game_map,
     token: log.server_instance_token,
     steam_id: log.metadata.steam_id,
@@ -61,8 +82,10 @@ export default function LogList({ selectedToken, onSelect }) {
               columns={columns}
               pageSize={10}
               rowsPerPageOptions={[10, 25, 50]}
-              onRowClick={(params) => onSelect && onSelect(params.row.token)}
-              getRowClassName={(params) => params.row.token === selectedToken ? 'Mui-selected' : ''}
+              onRowClick={(params) => onSelect && onSelect(params.row.log_id)}
+              getRowClassName={(params) =>
+                params.row.log_id === selectedToken ? 'Mui-selected' : ''
+              }
               sx={{
                 backgroundColor: 'background.paper',
                 '& .MuiDataGrid-columnHeaders': { backgroundColor: '#f5f5f5', fontWeight: 700 },

@@ -35,24 +35,20 @@ function LogViewer({ token }) {
       });
   }, [token]);
 
-  const { ws } = useWebSocket();
+  const { subscribe } = useWebSocket();
 
   useEffect(() => {
-    if (!token || !ws) return;
-    ws.send(JSON.stringify({ type: 'subscribe', event: 'log_chunk', token }));
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
+    if (!token) return;
+    const handleLogChunk = (data) => {
       if (data.type === 'log_chunk' && data.token === token) {
         setLogs((prev) => [...prev, data.payload]);
       }
     };
-
+    const unsub = subscribe('log_chunk', handleLogChunk, { token });
     return () => {
-      if (ws) {
-        ws.send(JSON.stringify({ type: 'unsubscribe', event: 'log_chunk', token }));
-      }
+      unsub();
     };
-  }, [token, ws]);
+  }, [token, subscribe]);
 
   const scrollToBottom = () => {
     if (containerRef.current) {
